@@ -1,5 +1,7 @@
 # ESDSalgo
 
+Employee Safety Detection System Algorithm part
+
 ## 部署指南
 
 状态灯
