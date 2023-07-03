@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 
-import glob
 import os
 from PIL import Image
 

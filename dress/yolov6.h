@@ -1,5 +1,6 @@
 #ifndef YOLOV6_H
 #define YOLOV6_H
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -36,13 +37,13 @@ using json = nlohmann::json;
 const int num_class = 6;
 static const int INPUT_W = 960;
 static const int INPUT_H = 540;
-static const char* INPUT_BLOB_NAME = "images";
-static const char* OUTPUT_BLOB_NAME = "outputs";
-static const char* class_names[] = {
+static const char *INPUT_BLOB_NAME = "images";
+static const char *OUTPUT_BLOB_NAME = "outputs";
+static const char *class_names[] = {
         "helmet", "nohelmet", "glove", "noglove", "coat", "nocoat"
 };
 
-cv::Mat static_resize(cv::Mat&);
+cv::Mat static_resize(cv::Mat &);
 
 struct Object {
     cv::Rect_<float> rect;
@@ -50,15 +51,24 @@ struct Object {
     float prob;
 };
 
-static inline float intersection_area(const Object&, const Object&);
-static void qsort_descent_inplace(std::vector<Object>&, int, int);
-static void qsort_descent_inplace(std::vector<Object>&);
-static void nms_sorted_bboxes(const std::vector<Object>&, std::vector<int>&, float);
-static void generate_yolo_proposals(float*, int, float, std::vector<Object>&);
-float* blobFromImage(cv::Mat&);
-static void decode_outputs(float*, int, std::vector<Object>&, float, const int, const int);
-static void print_objects(const std::vector<Object>&);
-IExecutionContext* Init(char*, int&);
-json doInference(IExecutionContext&, cv::Mat, const int);
+static inline float intersection_area(const Object &, const Object &);
+
+static void qsort_descent_inplace(std::vector <Object> &, int, int);
+
+static void qsort_descent_inplace(std::vector <Object> &);
+
+static void nms_sorted_bboxes(const std::vector <Object> &, std::vector<int> &, float);
+
+static void generate_yolo_proposals(float *, int, float, std::vector <Object> &);
+
+float *blobFromImage(cv::Mat &);
+
+static void decode_outputs(float *, int, std::vector <Object> &, float, const int, const int);
+
+static void print_objects(const std::vector <Object> &);
+
+IExecutionContext *Init(char *, int &);
+
+json doInference(IExecutionContext &, cv::Mat, const int);
 
 #endif

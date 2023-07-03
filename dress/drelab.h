@@ -1,4 +1,5 @@
 #pragma once
+
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 #include <pthread.h>
@@ -8,30 +9,33 @@
 #include <list>
 #include <unistd.h>
 #include <string>
+
 using namespace std;
-class drelab
-{
+
+class drelab {
 private:
     json result;
     json message;
 public:
     drelab(/* args */);
-    void createimage(string str){
-        result["image"]=str;
+
+    void createimage(string str) {
+        result["image"] = str;
     }
-    void createmassage(json message){
+
+    void createmassage(json message) {
         result.update(message);
     }
-    string getstring(){
+
+    string getstring() {
         return result.dump();
     }
+
     ~drelab();
 };
 
-drelab::drelab(/* args */)
-{
+drelab::drelab(/* args */) {
 }
 
-drelab::~drelab()
-{
+drelab::~drelab() {
 }

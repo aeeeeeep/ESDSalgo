@@ -3,12 +3,12 @@
 using namespace nvinfer1;
 using json = nlohmann::json;
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     // cudaSetDevice(DEVICE);
     // create a model using the API directly and serialize it to a stream
 
     int output_size = 1;
-    IExecutionContext* context = Init(argv[1], output_size);
+    IExecutionContext *context = Init(argv[1], output_size);
 
     cv::Mat img = cv::imread(argv[3]);
     // run inference

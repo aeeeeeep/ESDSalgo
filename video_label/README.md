@@ -48,12 +48,11 @@
 - 未正确佩戴绝缘手套：noglove
 
   ![](figure/noglove.jpg)
-  
 
 所有类别为
 
 | helmet | nohelmet | coat | nocoat | glove | noglove |
-| ------ | -------- | ---- | ------ | ----- | ------- |
+|--------|----------|------|--------|-------|---------|
 
 ### 要求
 
@@ -69,12 +68,13 @@
 	└── labels					# 标注信息保存目录
 ```
 
-对`images`目录下的所有图片使用 LabelImg 工具标注，以 YOLO 数据集标注格式 `.txt`，保存到 labels 目录中，标注需要包含目标物体的整体边缘，noglove 类别标注要包括人员的整个手部和小臂
+对`images`目录下的所有图片使用 LabelImg 工具标注，以 YOLO 数据集标注格式 `.txt`，保存到 labels 目录中，标注需要包含目标物体的整体边缘，noglove
+类别标注要包括人员的整个手部和小臂
 
 
 > LabelImg 官方仓库 https://github.com/heartexlabs/labelImg
 >
-> Yolo标注工具-labelImg的详细使用 https://blog.csdn.net/klaus_x/article/details/106854136 
+> Yolo标注工具-labelImg的详细使用 https://blog.csdn.net/klaus_x/article/details/106854136
 
 ### 困难情况
 

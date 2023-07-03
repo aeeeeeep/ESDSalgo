@@ -4,8 +4,8 @@ using namespace nvinfer1;
 using json = nlohmann::json;
 static Logger gLogger;
 
-cv::Mat static_resize(cv::Mat& img) {
-    float r = std::min(INPUT_W / (img.cols*1.0), INPUT_H / (img.rows*1.0));
+cv::Mat static_resize(cv::Mat &img) {
+    float r = std::min(INPUT_W / (img.cols * 1.0), INPUT_H / (img.rows * 1.0));
     int unpad_w = r * img.cols;
     int unpad_h = r * img.rows;
     cv::Mat re(unpad_h, unpad_w, CV_8UC3);
@@ -15,28 +15,24 @@ cv::Mat static_resize(cv::Mat& img) {
     return out;
 }
 
-static inline float intersection_area(const Object& a, const Object& b)
-{
+static inline float intersection_area(const Object &a, const Object &b) {
     cv::Rect_<float> inter = a.rect & b.rect;
     return inter.area();
 }
 
-static void qsort_descent_inplace(std::vector<Object>& faceobjects, int left, int right)
-{
+static void qsort_descent_inplace(std::vector <Object> &faceobjects, int left, int right) {
     int i = left;
     int j = right;
     float p = faceobjects[(left + right) / 2].prob;
 
-    while (i <= j)
-    {
+    while (i <= j) {
         while (faceobjects[i].prob > p)
             i++;
 
         while (faceobjects[j].prob < p)
             j--;
 
-        if (i <= j)
-        {
+        if (i <= j) {
             // swap
             std::swap(faceobjects[i], faceobjects[j]);
             i++;
@@ -44,47 +40,42 @@ static void qsort_descent_inplace(std::vector<Object>& faceobjects, int left, in
         }
     }
 
-    #pragma omp parallel sections
+#pragma omp parallel sections
     {
-        #pragma omp section
+#pragma omp section
         {
             if (left < j) qsort_descent_inplace(faceobjects, left, j);
         }
-        #pragma omp section
+#pragma omp section
         {
             if (i < right) qsort_descent_inplace(faceobjects, i, right);
         }
     }
 }
 
-static void qsort_descent_inplace(std::vector<Object>& objects)
-{
+static void qsort_descent_inplace(std::vector <Object> &objects) {
     if (objects.empty())
         return;
 
     qsort_descent_inplace(objects, 0, objects.size() - 1);
 }
 
-static void nms_sorted_bboxes(const std::vector<Object>& faceobjects, std::vector<int>& picked, float nms_threshold)
-{
+static void nms_sorted_bboxes(const std::vector <Object> &faceobjects, std::vector<int> &picked, float nms_threshold) {
     picked.clear();
 
     const int n = faceobjects.size();
 
     std::vector<float> areas(n);
-    for (int i = 0; i < n; i++)
-    {
+    for (int i = 0; i < n; i++) {
         areas[i] = faceobjects[i].rect.area();
     }
 
-    for (int i = 0; i < n; i++)
-    {
-        const Object& a = faceobjects[i];
+    for (int i = 0; i < n; i++) {
+        const Object &a = faceobjects[i];
 
         int keep = 1;
-        for (int j = 0; j < (int)picked.size(); j++)
-        {
-            const Object& b = faceobjects[picked[j]];
+        for (int j = 0; j < (int) picked.size(); j++) {
+            const Object &b = faceobjects[picked[j]];
 
             // intersection over union
             float inter_area = intersection_area(a, b);
@@ -100,25 +91,22 @@ static void nms_sorted_bboxes(const std::vector<Object>& faceobjects, std::vecto
 }
 
 
-static void generate_yolo_proposals(float* feat_blob, int output_size, float prob_threshold, std::vector<Object>& objects)
-{
+static void
+generate_yolo_proposals(float *feat_blob, int output_size, float prob_threshold, std::vector <Object> &objects) {
     auto dets = output_size / (num_class + 5);
-    for (int boxs_idx = 0; boxs_idx < dets; boxs_idx++)
-    {
-        const int basic_pos = boxs_idx *(num_class + 5);
-        float x_center = feat_blob[basic_pos+0];
-        float y_center = feat_blob[basic_pos+1];
-        float w = feat_blob[basic_pos+2];
-        float h = feat_blob[basic_pos+3];
+    for (int boxs_idx = 0; boxs_idx < dets; boxs_idx++) {
+        const int basic_pos = boxs_idx * (num_class + 5);
+        float x_center = feat_blob[basic_pos + 0];
+        float y_center = feat_blob[basic_pos + 1];
+        float w = feat_blob[basic_pos + 2];
+        float h = feat_blob[basic_pos + 3];
         float x0 = x_center - w * 0.5f;
         float y0 = y_center - h * 0.5f;
-        float box_objectness = feat_blob[basic_pos+4];
-        for (int class_idx = 0; class_idx < num_class; class_idx++)
-        {
+        float box_objectness = feat_blob[basic_pos + 4];
+        for (int class_idx = 0; class_idx < num_class; class_idx++) {
             float box_cls_score = feat_blob[basic_pos + 5 + class_idx];
             float box_prob = box_objectness * box_cls_score;
-            if (box_prob > prob_threshold)
-            {
+            if (box_prob > prob_threshold) {
                 Object obj;
                 obj.rect.x = x0;
                 obj.rect.y = y0;
@@ -135,21 +123,18 @@ static void generate_yolo_proposals(float* feat_blob, int output_size, float pro
 
 }
 
-float* blobFromImage(cv::Mat& img){
+float *blobFromImage(cv::Mat &img) {
     cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 
-    float* blob = new float[img.total()*3];
+    float *blob = new float[img.total() * 3];
     int channels = 3;
     int img_h = img.rows;
     int img_w = img.cols;
-    for (size_t c = 0; c < channels; c++)
-    {
-        for (size_t  h = 0; h < img_h; h++)
-        {
-            for (size_t w = 0; w < img_w; w++)
-            {
+    for (size_t c = 0; c < channels; c++) {
+        for (size_t h = 0; h < img_h; h++) {
+            for (size_t w = 0; w < img_w; w++) {
                 blob[c * img_w * img_h + h * img_w + w] =
-                    (((float)img.at<cv::Vec3b>(h, w)[c]) / 255.0f);
+                        (((float) img.at<cv::Vec3b>(h, w)[c]) / 255.0f);
             }
         }
     }
@@ -157,58 +142,56 @@ float* blobFromImage(cv::Mat& img){
 }
 
 
-static void decode_outputs(float* prob, int output_size, std::vector<Object>& objects, float scale, const int img_w, const int img_h) {
-        std::vector<Object> proposals;
-        generate_yolo_proposals(prob, output_size, BBOX_CONF_THRESH, proposals);
+static void decode_outputs(float *prob, int output_size, std::vector <Object> &objects, float scale, const int img_w,
+                           const int img_h) {
+    std::vector <Object> proposals;
+    generate_yolo_proposals(prob, output_size, BBOX_CONF_THRESH, proposals);
 
-        qsort_descent_inplace(proposals);
+    qsort_descent_inplace(proposals);
 
-        std::vector<int> picked;
-        nms_sorted_bboxes(proposals, picked, NMS_THRESH);
+    std::vector<int> picked;
+    nms_sorted_bboxes(proposals, picked, NMS_THRESH);
 
 
-        int count = picked.size();
+    int count = picked.size();
 
-        objects.resize(count);
-        for (int i = 0; i < count; i++)
-        {
-            objects[i] = proposals[picked[i]];
+    objects.resize(count);
+    for (int i = 0; i < count; i++) {
+        objects[i] = proposals[picked[i]];
 
-            // adjust offset to original unpadded
-            float x0 = (objects[i].rect.x) / scale;
-            float y0 = (objects[i].rect.y) / scale;
-            float x1 = (objects[i].rect.x + objects[i].rect.width) / scale;
-            float y1 = (objects[i].rect.y + objects[i].rect.height) / scale;
+        // adjust offset to original unpadded
+        float x0 = (objects[i].rect.x) / scale;
+        float y0 = (objects[i].rect.y) / scale;
+        float x1 = (objects[i].rect.x + objects[i].rect.width) / scale;
+        float y1 = (objects[i].rect.y + objects[i].rect.height) / scale;
 
-            // clip
-            x0 = std::max(std::min(x0, (float)(img_w - 1)), 0.f);
-            y0 = std::max(std::min(y0, (float)(img_h - 1)), 0.f);
-            x1 = std::max(std::min(x1, (float)(img_w - 1)), 0.f);
-            y1 = std::max(std::min(y1, (float)(img_h - 1)), 0.f);
+        // clip
+        x0 = std::max(std::min(x0, (float) (img_w - 1)), 0.f);
+        y0 = std::max(std::min(y0, (float) (img_h - 1)), 0.f);
+        x1 = std::max(std::min(x1, (float) (img_w - 1)), 0.f);
+        y1 = std::max(std::min(y1, (float) (img_h - 1)), 0.f);
 
-            objects[i].rect.x = x0;
-            objects[i].rect.y = y0;
-            objects[i].rect.width = x1 - x0;
-            objects[i].rect.height = y1 - y0;
-        }
+        objects[i].rect.x = x0;
+        objects[i].rect.y = y0;
+        objects[i].rect.width = x1 - x0;
+        objects[i].rect.height = y1 - y0;
+    }
 }
 
-static void print_objects(const std::vector<Object>& objects)
-{
-    for (size_t i = 0; i < objects.size(); i++)
-    {
-        const Object& obj = objects[i];
+static void print_objects(const std::vector <Object> &objects) {
+    for (size_t i = 0; i < objects.size(); i++) {
+        const Object &obj = objects[i];
 
         fprintf(stderr, "%d = %.5f at %.2f %.2f %.2f x %.2f\n", obj.label, obj.prob,
                 obj.rect.x, obj.rect.y, obj.rect.width, obj.rect.height);
     }
 }
 
-IExecutionContext* Init(char* path, int& output_size) {
+IExecutionContext *Init(char *path, int &output_size) {
     char *trtModelStream{nullptr};
     size_t size{0};
 
-    const std::string engine_file_path {path};
+    const std::string engine_file_path{path};
     std::ifstream file(engine_file_path, std::ios::binary);
     if (file.good()) {
         file.seekg(0, file.end);
@@ -219,15 +202,15 @@ IExecutionContext* Init(char* path, int& output_size) {
         file.read(trtModelStream, size);
         file.close();
     }
-    IRuntime* runtime = createInferRuntime(gLogger);
+    IRuntime *runtime = createInferRuntime(gLogger);
     assert(runtime != nullptr);
-    ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
+    ICudaEngine *engine = runtime->deserializeCudaEngine(trtModelStream, size);
     assert(engine != nullptr);
-    IExecutionContext* context = engine->createExecutionContext();
+    IExecutionContext *context = engine->createExecutionContext();
     assert(context != nullptr);
-    
+
     auto out_dims = engine->getBindingDimensions(1);
-    for(int j=0;j<out_dims.nbDims;j++) {
+    for (int j = 0; j < out_dims.nbDims; j++) {
         output_size *= out_dims.d[j];
     }
 
@@ -236,13 +219,13 @@ IExecutionContext* Init(char* path, int& output_size) {
 }
 
 
-json doInference(IExecutionContext& context, cv::Mat img, const int output_size) {
-    const ICudaEngine& engine = context.getEngine();
+json doInference(IExecutionContext &context, cv::Mat img, const int output_size) {
+    const ICudaEngine &engine = context.getEngine();
 
     // Pointers to input and output device buffers to pass to engine.
     // Engine requires exactly IEngine::getNbBindings() number of buffers.
     assert(engine.getNbBindings() == 2);
-    void* buffers[2];
+    void *buffers[2];
 
     // In order to bind the buffers, we need to know the names of the input and output tensors.
     // Note that indices are guaranteed to be less than IEngine::getNbBindings()
@@ -252,46 +235,46 @@ json doInference(IExecutionContext& context, cv::Mat img, const int output_size)
     const int outputIndex = engine.getBindingIndex(OUTPUT_BLOB_NAME);
     assert(engine.getBindingDataType(outputIndex) == nvinfer1::DataType::kFLOAT);
     int mBatchSize = engine.getMaxBatchSize();
-    
+
     int img_w = img.cols;
     int img_h = img.rows;
     cv::Mat pr_img = static_resize(img);
     cv::Size input_shape = pr_img.size();
 
-    float* input = blobFromImage(pr_img);
+    float *input = blobFromImage(pr_img);
 
     // Create GPU buffers on device
     CHECK(cudaMalloc(&buffers[inputIndex], 3 * input_shape.height * input_shape.width * sizeof(float)));
-    CHECK(cudaMalloc(&buffers[outputIndex], output_size*sizeof(float)));
+    CHECK(cudaMalloc(&buffers[outputIndex], output_size * sizeof(float)));
 
     // Create stream
     cudaStream_t stream;
     CHECK(cudaStreamCreate(&stream));
 
-    float* output = new float[output_size];
+    float *output = new float[output_size];
 
     // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
-    CHECK(cudaMemcpyAsync(buffers[inputIndex], input, 3 * input_shape.height * input_shape.width * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CHECK(cudaMemcpyAsync(buffers[inputIndex], input, 3 * input_shape.height * input_shape.width * sizeof(float),
+                          cudaMemcpyHostToDevice, stream));
     context.enqueue(1, buffers, stream, nullptr);
     CHECK(cudaMemcpyAsync(output, buffers[outputIndex], output_size * sizeof(float), cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
-    float scale = std::min(INPUT_W / (img.cols*1.0), INPUT_H / (img.rows*1.0));
-    std::vector<Object> objects;
+    float scale = std::min(INPUT_W / (img.cols * 1.0), INPUT_H / (img.rows * 1.0));
+    std::vector <Object> objects;
     decode_outputs(output, output_size, objects, scale, img_w, img_h);
-    
+
     json j;
-    std::vector<json> bboxes;
-    
-    for (size_t i = 0; i < objects.size(); i++)
-    {
-        const Object& obj = objects[i];
+    std::vector <json> bboxes;
+
+    for (size_t i = 0; i < objects.size(); i++) {
+        const Object &obj = objects[i];
         json bbox = {
-            {"class", obj.label},
-            {"score", obj.prob},
-            {"xmin", std::round(obj.rect.x)},
-            {"ymin", std::round(obj.rect.y)},
-            {"width", std::round(obj.rect.width)},
-            {"height", std::round(obj.rect.height)}
+                {"class",  obj.label},
+                {"score",  obj.prob},
+                {"xmin",   std::round(obj.rect.x)},
+                {"ymin",   std::round(obj.rect.y)},
+                {"width",  std::round(obj.rect.width)},
+                {"height", std::round(obj.rect.height)}
         };
         bboxes.push_back(bbox);
     }
